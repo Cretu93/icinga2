@@ -31,8 +31,6 @@
 #include "base/convert.hpp"
 #include "base/scriptglobal.hpp"
 #include "base/process.hpp"
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/errinfo_errno.hpp>
@@ -489,8 +487,7 @@ String Application::GetExePath(const String& argv0)
 	if (!foundSlash) {
 		const char *pathEnv = getenv("PATH");
 		if (pathEnv) {
-			std::vector<String> paths;
-			boost::algorithm::split(paths, pathEnv, boost::is_any_of(":"));
+			std::vector<String> paths = String(pathEnv).Split(":");
 
 			bool foundPath = false;
 			for (const String& path : paths) {
@@ -979,6 +976,11 @@ int Application::Run()
 	SetMainTime(Utility::GetTime());
 
 	return Main();
+}
+
+void Application::UpdatePidFile(const String& filename)
+{
+	UpdatePidFile(filename, Utility::GetPid());
 }
 
 /**

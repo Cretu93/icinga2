@@ -23,7 +23,7 @@
 #include "base/i2-base.hpp"
 #include "base/streamlogger.thpp"
 #include "base/timer.hpp"
-#include <ostream>
+#include <iosfwd>
 
 namespace icinga
 {
