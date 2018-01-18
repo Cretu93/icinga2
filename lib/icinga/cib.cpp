@@ -305,6 +305,8 @@ void CIB::StatsFunc(const Dictionary::Ptr& status, const Array::Ptr& perfdata) {
 	status->Set("active_service_checks_15min", GetActiveServiceChecksStatistics(60 * 15));
 	status->Set("passive_service_checks_15min", GetPassiveServiceChecksStatistics(60 * 15));
 
+	status->Set("remote_check_queue", ClusterEvents::GetCheckRequestQueueSize());
+
 	CheckableCheckStatistics scs = CalculateServiceCheckStats();
 
 	status->Set("min_latency", scs.min_latency);

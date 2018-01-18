@@ -43,6 +43,7 @@ boost::signals2::signal<void (const Checkable::Ptr&)> Checkable::OnNextCheckUpda
 boost::mutex Checkable::m_StatsMutex;
 int Checkable::m_PendingChecks = 0;
 boost::condition_variable Checkable::m_PendingChecksCV;
+Timer::Ptr m_LogTimer;
 
 CheckCommand::Ptr Checkable::GetCheckCommand() const
 {

@@ -21,12 +21,14 @@
 #include "remote/apilistener.hpp"
 #include "base/serializer.hpp"
 #include "base/exception.hpp"
+#include <boost/thread/once.hpp>
 
 using namespace icinga;
 
 boost::mutex ClusterEvents::m_Mutex;
 std::deque<std::function<void ()>> ClusterEvents::m_CheckRequestQueue;
 bool ClusterEvents::m_CheckSchedulerRunning;
+int ClusterEvents::m_ChecksExecutedDuringInterval;
 
 void ClusterEvents::RemoteCheckThreadProc()
 {
@@ -44,6 +46,7 @@ void ClusterEvents::RemoteCheckThreadProc()
 
 		auto callback = m_CheckRequestQueue.front();
 		m_CheckRequestQueue.pop_front();
+		m_ChecksExecutedDuringInterval++;
 		lock.unlock();
 
 		callback();
@@ -57,6 +60,15 @@ void ClusterEvents::RemoteCheckThreadProc()
 
 void ClusterEvents::EnqueueCheck(const MessageOrigin::Ptr& origin, const Dictionary::Ptr& params)
 {
+	static boost::once_flag once = BOOST_ONCE_INIT;
+
+	boost::call_once(once, []() {
+		m_LogTimer = new Timer();
+		m_LogTimer->SetInterval(10);
+		m_LogTimer->OnTimerExpired.connect(std::bind(ClusterEvents::LogRemoteCheckQueueInformation));
+		m_LogTimer->Start();
+	});
+
 	boost::mutex::scoped_lock lock(m_Mutex);
 
 	if (m_CheckRequestQueue.size() >= 25000) {
@@ -183,3 +195,22 @@ void ClusterEvents::ExecuteCheckFromQueue(const MessageOrigin::Ptr& origin, cons
 	}
 }
 
+int ClusterEvents::GetCheckRequestQueueSize()
+{
+	return m_CheckRequestQueue.size();
+}
+
+void ClusterEvents::LogRemoteCheckQueueInformation()
+{
+	if (m_ChecksExecutedDuringInterval == 0)
+		return;
+
+	Log(LogInformation, "RemoteCheckQueue")
+		<< "items: " << m_CheckRequestQueue.size()
+		<< ", rate: " << m_ChecksExecutedDuringInterval / 10 << "/s "
+		<< "(" << m_ChecksExecutedDuringInterval * 6 << "/min "
+		<< m_ChecksExecutedDuringInterval * 6 * 5 << "/5min "
+		<< m_ChecksExecutedDuringInterval * 6 * 15 << "/15min" << ");";
+
+	m_ChecksExecutedDuringInterval = 0;
+}
